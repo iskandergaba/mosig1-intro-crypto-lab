@@ -457,7 +457,7 @@ int main(void)
     // Test non-determinism
     test_nondeterminism();
 
-    // Test Collision attack
+    // Test collision attack
     test_attack();
 
     // Test ecnryption-decryption
