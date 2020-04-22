@@ -238,7 +238,7 @@ uint32_t *attack_s64_128(uint8_t *ct, size_t ctlen)
     return leak;
 }
 
-void test_nondeterminism()
+int test_nondeterminism()
 {
     int len = 24, iterations = 3;
 
@@ -287,9 +287,10 @@ void test_nondeterminism()
         printf("\n");
     }
     printf("\n");
+    return 0;
 }
 
-void test_attack()
+int test_attack()
 {
     printf("SPECK 32/64 Collision Attack Test:\n");
     int len = 1000000;
@@ -311,9 +312,10 @@ void test_attack()
     printf("\tAttacking...\n");
     uint32_t xor = attack_s32_64(ct, len);
     printf("\tCollision found! Here's the XOR of two plain-text blocks: %d\n\n", xor);
+    return 0;
 }
 
-void test_enc_dec()
+int test_enc_dec()
 {
     printf("SPECK 32/64 Encryption-Decryption Test:\n");
     int len = 24;
@@ -447,6 +449,7 @@ void test_enc_dec()
         printf("%d ", pt2[i]);
     }
     printf("\n");
+    return 0;
 }
 
 int main(void)
