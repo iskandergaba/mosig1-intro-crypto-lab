@@ -2,6 +2,8 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <time.h>
+#include <search.h>
+#include <inttypes.h>
 
 #include "specks.h"
 
@@ -72,16 +74,35 @@ uint32_t attack_s32_64(uint8_t *ct, size_t ctlen)
 {
     int len = ctlen / 4;
     uint32_t *cblocks = (uint32_t *)ct;
-    for (int i = 1; i < len; i++)
+
+    hcreate(len);
+    for (int i = 0; i < len; i++)
     {
-        for (int j = 1; j < len; j++)
+        // Converting the key into a char array
+        int len_tmp = snprintf(NULL, 0, "%" PRIu32, cblocks[i]);
+        char *key = malloc(len_tmp + 1);
+        //char key[len_tmp + 1];
+        snprintf(key, len_tmp + 1, "%" PRIu32, cblocks[i]);
+
+        // Creating the hashtable item
+        ENTRY item;
+        item.key = key;
+        ENTRY *found = hsearch(item, FIND);
+
+        // Item not found, insert the index in the hashtable
+        if (found == NULL)
         {
-            uint32_t a = cblocks[i];
-            uint32_t b = cblocks[j];
-            if (i != j && a == b)
-            {
-                return cblocks[i - 1] ^ cblocks[j - 1];
-            }
+            int *data = malloc(sizeof(int));
+            *data = i;
+            item.data = data;
+            hsearch(item, ENTER);
+        }
+        // Item found, i.e. Collision. Return the XOR of the appropriate CT blocks
+        else
+        {
+            int j = *(int *)found->data;
+            hdestroy();
+            return cblocks[i - 1] ^ cblocks[j - 1];
         }
     }
     return -1;
