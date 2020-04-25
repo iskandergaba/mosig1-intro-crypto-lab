@@ -103,7 +103,7 @@ uint32_t attack_s32_64(uint8_t *ct, size_t ctlen)
             return cblocks[i - 1] ^ cblocks[j - 1];
         }
     }
-    return -1;
+    return UINT32_MAX;
 }
 
 size_t cbc_enc_s48_96(uint32_t key[4], uint8_t *pt, uint8_t *ct, size_t ptlen)
@@ -163,12 +163,13 @@ uint16_t *attack_s48_96(uint8_t *ct, size_t ctlen)
     hcreate(len);
     uint16_t *cblocks = (uint16_t *)ct;
     uint16_t *leak = malloc(3 * sizeof(uint16_t));
-    leak[0] = -1, leak[1] = -1, leak[2] = -1;
+    leak[0] = UINT16_MAX, leak[1] = UINT16_MAX, leak[2] = UINT16_MAX;
     for (int i = 0; i < len; i += 3)
     {
         // Converting the key into a char array
         int len_tmp = 0;
-        for (int j = 0; j < 3; j++) {
+        for (int j = 0; j < 3; j++)
+        {
             len_tmp += snprintf(NULL, 0, "%" PRIu16, cblocks[i + j]);
         }
         char *key = malloc(len_tmp + 1);
@@ -257,22 +258,44 @@ size_t cbc_dec_s64_128(uint32_t key[4], uint8_t *ct, uint8_t *pt, size_t ctlen)
 uint32_t *attack_s64_128(uint8_t *ct, size_t ctlen)
 {
     int len = ctlen / 8;
-    uint32_t *leak = malloc(2 * sizeof(uint32_t));
+    hcreate(len);
     uint32_t *cblocks = (uint32_t *)ct;
+    uint32_t *leak = malloc(2 * sizeof(uint32_t));
+    leak[0] = UINT32_MAX, leak[1] = UINT32_MAX;
     for (int i = 2; i < len; i += 2)
     {
-        for (int j = 2; j < len; j += 2)
+        // Converting the key into a char array
+        int len_tmp = 0;
+        for (int j = 0; j < 2; j++)
         {
-            uint32_t *ci = cblocks + i;
-            uint32_t *cj = cblocks + j;
-            if (i != j && ci[0] == cj[0] && ci[1] == cj[1])
-            {
-                uint32_t *cii = cblocks + i - 2;
-                uint32_t *cjj = cblocks + i - 2;
-                leak[0] = cii[0] ^ cjj[0];
-                leak[1] = cii[1] ^ cjj[1];
-                return leak;
-            }
+            len_tmp += snprintf(NULL, 0, "%" PRIu32, cblocks[i + j]);
+        }
+        char *key = malloc(len_tmp + 1);
+        snprintf(key, len_tmp + 1, "%" PRIu32 "%" PRIu32, cblocks[i], cblocks[i + 1]);
+
+        // Creating the hashtable item
+        ENTRY item;
+        item.key = key;
+        ENTRY *found = hsearch(item, FIND);
+
+        // Item not found, insert the index in the hashtable
+        if (found == NULL)
+        {
+            int *data = malloc(sizeof(int));
+            *data = i;
+            item.data = data;
+            hsearch(item, ENTER);
+        }
+        // Item found, i.e. Collision. Return the XOR of the appropriate CT blocks
+        else
+        {
+            int j = *(int *)found->data;
+            hdestroy();
+            uint32_t *cii = cblocks + i - 2;
+            uint32_t *cjj = cblocks + j - 2;
+            leak[0] = cii[0] ^ cjj[0];
+            leak[1] = cii[1] ^ cjj[1];
+            break;
         }
     }
     return leak;
@@ -333,40 +356,40 @@ int test_nondeterminism()
 int test_attack()
 {
     printf("SPECK 32/64 Collision Attack Test:\n");
-    // Between 2^17 and 2^18 blocks (Birthday bound is 2^16 blocks)
-    int blocks = 250000;
-    int len = 4 * blocks;
-    printf("\tPT/CT length: %d\n", len);
-    uint16_t key[4];
-    uint8_t *pt = malloc(len * sizeof(uint8_t));
-    uint8_t *ct = malloc(len * sizeof(uint8_t));
+    // 2^18 blocks (Birthday bound is 2^16 blocks)
+    int blocks = 1 << 18;
+    size_t len = 4 * blocks;
+    printf("\tPT/CT blocks: %d\n", blocks);
+    uint16_t key0[4];
+    uint8_t *pt0 = malloc(len * sizeof(uint8_t));
+    uint8_t *ct0 = malloc(len * sizeof(uint8_t));
     for (int i = 0; i < 4; i++)
     {
-        key[i] = rand();
+        key0[i] = rand();
     }
     for (int i = 0; i < len; i++)
     {
-        pt[i] = rand();
+        pt0[i] = rand();
     }
     printf("\tEncryption in progress...\n");
-    cbc_enc_s32_64(key, pt, ct, len);
+    cbc_enc_s32_64(key0, pt0, ct0, len);
     printf("\tEncryption Done.\n");
     printf("\tAttacking...\n");
-    uint32_t xor = attack_s32_64(ct, len);
-    if (xor == -1)
+    uint32_t xor0 = attack_s32_64(ct0, len);
+    if (xor0 == UINT32_MAX)
     {
         printf("\tAttack failed! No collision found.\n\n");
     }
     else
     {
-        printf("\tAttack succeeded! XOR of two plain-text blocks: %" PRIu32 "\n\n", xor);
+        printf("\tAttack succeeded! XOR of two plain-text blocks: %" PRIu32 "\n\n", xor0);
     }
 
     printf("SPECK 48/96 Collision Attack Test:\n");
-    // Between 2^25 and 2^26 blocks (Birthday bound is 2^24 blocks)
-    blocks = 50000000;
+    // 2^26 blocks (Birthday bound is 2^24 blocks)
+    blocks = 1 << 26;
     len = 6 * blocks;
-    printf("\tPT/CT length: %d\n", len);
+    printf("\tPT/CT blocks: %d\n", blocks);
     uint32_t key1[4];
     uint8_t *pt1 = malloc(len * sizeof(uint8_t));
     uint8_t *ct1 = malloc(len * sizeof(uint8_t));
@@ -383,7 +406,7 @@ int test_attack()
     printf("\tEncryption Done.\n");
     printf("\tAttacking...\n");
     uint16_t *xor1 = attack_s48_96(ct1, len);
-    if (xor1[0] == -1 && xor1[1] == -1 && xor1[2] == -1)
+    if (xor1[0] == UINT16_MAX && xor1[1] == UINT16_MAX && xor1[2] == UINT16_MAX)
     {
         printf("\tAttack failed! No collision found.\n\n");
     }
