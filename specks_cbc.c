@@ -81,7 +81,6 @@ uint32_t attack_s32_64(uint8_t *ct, size_t ctlen)
         // Converting the key into a char array
         int len_tmp = snprintf(NULL, 0, "%" PRIu32, cblocks[i]);
         char *key = malloc(len_tmp + 1);
-        //char key[len_tmp + 1];
         snprintf(key, len_tmp + 1, "%" PRIu32, cblocks[i]);
 
         // Creating the hashtable item
@@ -280,13 +279,13 @@ int test_nondeterminism()
     printf("\tKey:\t");
     for (int i = 0; i < 4; i++)
     {
-        printf("%d ", key[i]);
+        printf("%" PRIu16 " ", key[i]);
     }
     printf("\n");
     printf("\tPT:\t");
     for (int i = 0; i < len; i++)
     {
-        printf("%d ", pt[i]);
+        printf("%" PRIu8 " ", pt[i]);
     }
     printf("\n\n");
 
@@ -303,7 +302,7 @@ int test_nondeterminism()
         printf("\tCT %d:\t", i);
         for (int i = 0; i < len; i++)
         {
-            printf("%d ", ct[i]);
+            printf("%" PRIu8 " ", ct[i]);
         }
         printf("\n");
     }
@@ -314,7 +313,8 @@ int test_nondeterminism()
 int test_attack()
 {
     printf("SPECK 32/64 Collision Attack Test:\n");
-    int len = 1000000;
+    int blocks = 200000;
+    int len = 4 * blocks;
     printf("\tPT/CT length: %d\n", len);
     uint16_t key[4];
     uint8_t *pt = malloc(len * sizeof(uint8_t));
@@ -332,7 +332,7 @@ int test_attack()
     printf("\tEncryption Done.\n");
     printf("\tAttacking...\n");
     uint32_t xor = attack_s32_64(ct, len);
-    printf("\tCollision found! Here's the XOR of two plain-text blocks: %d\n\n", xor);
+    printf("\tCollision found! Here's the XOR of two plain-text blocks: %" PRIu32 "\n\n", xor);
     return 0;
 }
 
@@ -356,21 +356,21 @@ int test_enc_dec()
     printf("\tIV:\t\t\t");
     for (int i = 0; i < 4; i++)
     {
-        printf("%d ", IV[i]);
+        printf("%" PRIu8 " ", IV[i]);
     }
     printf("\n");
 
     printf("\tPT:\t\t\t");
     for (int i = 0; i < len; i++)
     {
-        printf("%d ", pt0_print[i]);
+        printf("%" PRIu8 " ", pt0_print[i]);
     }
     printf("\n");
 
     printf("\tCT (PT encrypted):\t");
     for (int i = 0; i < len; i++)
     {
-        printf("%d ", ct0[i]);
+        printf("%" PRIu8 " ", ct0[i]);
     }
     printf("\n");
 
@@ -379,7 +379,7 @@ int test_enc_dec()
     printf("\tPT (CT decrypted):\t");
     for (int i = 0; i < len; i++)
     {
-        printf("%d ", pt0[i]);
+        printf("%" PRIu8 " ", pt0[i]);
     }
     printf("\n\n");
 
@@ -400,21 +400,21 @@ int test_enc_dec()
     printf("\tIV:\t\t\t");
     for (int i = 0; i < 6; i++)
     {
-        printf("%d ", IV[i]);
+        printf("%" PRIu8 " ", IV[i]);
     }
     printf("\n");
 
     printf("\tPT:\t\t\t");
     for (int i = 0; i < len; i++)
     {
-        printf("%d ", pt1_print[i]);
+        printf("%" PRIu8 " ", pt1_print[i]);
     }
     printf("\n");
 
     printf("\tCT (PT encrypted):\t");
     for (int i = 0; i < len; i++)
     {
-        printf("%d ", ct1[i]);
+        printf("%" PRIu8 " ", ct1[i]);
     }
     printf("\n");
 
@@ -423,7 +423,7 @@ int test_enc_dec()
     printf("\tPT (CT decrypted):\t");
     for (int i = 0; i < len; i++)
     {
-        printf("%d ", pt1[i]);
+        printf("%" PRIu8 " ", pt1[i]);
     }
     printf("\n\n");
 
@@ -439,35 +439,35 @@ int test_enc_dec()
         pt2_print[i] = pt2[i];
     }
 
-    cbc_enc_s48_96(key2, pt2, ct2, len);
+    cbc_enc_s64_128(key2, pt2, ct2, len);
 
     printf("\tIV:\t\t\t");
     for (int i = 0; i < 8; i++)
     {
-        printf("%d ", IV[i]);
+        printf("%" PRIu8 " ", IV[i]);
     }
     printf("\n");
 
     printf("\tPT:\t\t\t");
     for (int i = 0; i < len; i++)
     {
-        printf("%d ", pt2_print[i]);
+        printf("%" PRIu8 " ", pt2_print[i]);
     }
     printf("\n");
 
     printf("\tCT (PT encrypted):\t");
     for (int i = 0; i < len; i++)
     {
-        printf("%d ", ct2[i]);
+        printf("%" PRIu8 " ", ct2[i]);
     }
     printf("\n");
 
-    cbc_dec_s48_96(key2, ct2, pt2, len);
+    cbc_dec_s64_128(key2, ct2, pt2, len);
 
     printf("\tPT (CT decrypted):\t");
     for (int i = 0; i < len; i++)
     {
-        printf("%d ", pt2[i]);
+        printf("%" PRIu8 " ", pt2[i]);
     }
     printf("\n");
     return 0;
