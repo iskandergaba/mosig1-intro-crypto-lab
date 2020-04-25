@@ -73,9 +73,8 @@ size_t cbc_dec_s32_64(uint16_t key[4], uint8_t *ct, uint8_t *pt, size_t ctlen)
 uint32_t attack_s32_64(uint8_t *ct, size_t ctlen)
 {
     int len = ctlen / 4;
-    uint32_t *cblocks = (uint32_t *)ct;
-
     hcreate(len);
+    uint32_t *cblocks = (uint32_t *)ct;
     for (int i = 0; i < len; i++)
     {
         // Converting the key into a char array
@@ -161,23 +160,44 @@ size_t cbc_dec_s48_96(uint32_t key[4], uint8_t *ct, uint8_t *pt, size_t ctlen)
 uint16_t *attack_s48_96(uint8_t *ct, size_t ctlen)
 {
     int len = ctlen / 6;
-    uint16_t *leak = malloc(3 * sizeof(uint16_t));
+    hcreate(len);
     uint16_t *cblocks = (uint16_t *)ct;
-    for (int i = 3; i < len; i += 3)
+    uint16_t *leak = malloc(3 * sizeof(uint16_t));
+    leak[0] = -1, leak[1] = -1, leak[2] = -1;
+    for (int i = 0; i < len; i += 3)
     {
-        for (int j = 3; j < len; j += 3)
+        // Converting the key into a char array
+        int len_tmp = 0;
+        for (int j = 0; j < 3; j++) {
+            len_tmp += snprintf(NULL, 0, "%" PRIu16, cblocks[i + j]);
+        }
+        char *key = malloc(len_tmp + 1);
+        snprintf(key, len_tmp + 1, "%" PRIu16 "%" PRIu16 "%" PRIu16, cblocks[i], cblocks[i + 1], cblocks[i + 2]);
+
+        // Creating the hashtable item
+        ENTRY item;
+        item.key = key;
+        ENTRY *found = hsearch(item, FIND);
+
+        // Item not found, insert the index in the hashtable
+        if (found == NULL)
         {
-            uint16_t *ci = cblocks + i;
-            uint16_t *cj = cblocks + j;
-            if (i != j && ci[0] == cj[0] && ci[1] == cj[1] && ci[2] == cj[2])
-            {
-                uint16_t *cii = cblocks + i - 3;
-                uint16_t *cjj = cblocks + i - 3;
-                leak[0] = cii[0] ^ cjj[0];
-                leak[1] = cii[1] ^ cjj[1];
-                leak[2] = cii[2] ^ cjj[2];
-                return leak;
-            }
+            int *data = malloc(sizeof(int));
+            *data = i;
+            item.data = data;
+            hsearch(item, ENTER);
+        }
+        // Item found, i.e. Collision. Return the XOR of the appropriate CT blocks
+        else
+        {
+            int j = *(int *)found->data;
+            hdestroy();
+            uint16_t *cii = cblocks + i - 3;
+            uint16_t *cjj = cblocks + j - 3;
+            leak[0] = cii[0] ^ cjj[0];
+            leak[1] = cii[1] ^ cjj[1];
+            leak[2] = cii[2] ^ cjj[2];
+            break;
         }
     }
     return leak;
@@ -313,7 +333,8 @@ int test_nondeterminism()
 int test_attack()
 {
     printf("SPECK 32/64 Collision Attack Test:\n");
-    int blocks = 200000;
+    // Between 2^17 and 2^18 blocks (Birthday bound is 2^16 blocks)
+    int blocks = 250000;
     int len = 4 * blocks;
     printf("\tPT/CT length: %d\n", len);
     uint16_t key[4];
@@ -332,7 +353,44 @@ int test_attack()
     printf("\tEncryption Done.\n");
     printf("\tAttacking...\n");
     uint32_t xor = attack_s32_64(ct, len);
-    printf("\tCollision found! Here's the XOR of two plain-text blocks: %" PRIu32 "\n\n", xor);
+    if (xor == -1)
+    {
+        printf("\tAttack failed! No collision found.\n\n");
+    }
+    else
+    {
+        printf("\tAttack succeeded! XOR of two plain-text blocks: %" PRIu32 "\n\n", xor);
+    }
+
+    printf("SPECK 48/96 Collision Attack Test:\n");
+    // Between 2^25 and 2^26 blocks (Birthday bound is 2^24 blocks)
+    blocks = 50000000;
+    len = 6 * blocks;
+    printf("\tPT/CT length: %d\n", len);
+    uint32_t key1[4];
+    uint8_t *pt1 = malloc(len * sizeof(uint8_t));
+    uint8_t *ct1 = malloc(len * sizeof(uint8_t));
+    for (int i = 0; i < 4; i++)
+    {
+        key1[i] = rand();
+    }
+    for (int i = 0; i < len; i++)
+    {
+        pt1[i] = rand();
+    }
+    printf("\tEncryption in progress...\n");
+    cbc_enc_s48_96(key1, pt1, ct1, len);
+    printf("\tEncryption Done.\n");
+    printf("\tAttacking...\n");
+    uint16_t *xor1 = attack_s48_96(ct1, len);
+    if (xor1[0] == -1 && xor1[1] == -1 && xor1[2] == -1)
+    {
+        printf("\tAttack failed! No collision found.\n\n");
+    }
+    else
+    {
+        printf("\tAttack succeeded! XOR of two plain-text blocks: %" PRIu16 "%" PRIu16 "%" PRIu16 "\n\n", xor1[0], xor1[1], xor1[2]);
+    }
     return 0;
 }
 
