@@ -348,8 +348,11 @@ int test_nondeterminism()
             printf("%" PRIu8 " ", ct[i]);
         }
         printf("\n");
+        free(pt_temp);
     }
     printf("\n");
+    free(pt);
+    free(ct);
     return 0;
 }
 
@@ -414,6 +417,11 @@ int test_attack()
     {
         printf("\tAttack succeeded! XOR of two plain-text blocks: %" PRIu16 "%" PRIu16 "%" PRIu16 "\n\n", xor1[0], xor1[1], xor1[2]);
     }
+    free(pt0);
+    free(ct0);
+    free(pt1);
+    free(ct1);
+    free(xor1);
     return 0;
 }
 
@@ -551,6 +559,15 @@ int test_enc_dec()
         printf("%" PRIu8 " ", pt2[i]);
     }
     printf("\n");
+    free(pt0);
+    free(pt0_print);
+    free(ct0);
+    free(pt1);
+    free(pt1_print);
+    free(ct1);
+    free(pt2);
+    free(pt2_print);
+    free(ct2);
     return 0;
 }
 
