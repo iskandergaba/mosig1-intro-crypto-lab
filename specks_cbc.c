@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <stdbool.h>
 #include <time.h>
 #include <search.h>
 #include <inttypes.h>
@@ -303,7 +304,7 @@ uint32_t *attack_s64_128(uint8_t *ct, size_t ctlen)
 
 int test_nondeterminism()
 {
-    int len = 24, iterations = 3;
+    int len = 24;
 
     uint16_t key[4];
     for (int i = 0; i < 4; i++)
@@ -312,7 +313,7 @@ int test_nondeterminism()
     }
 
     uint8_t *pt = malloc(len * sizeof(uint8_t));
-    uint8_t *ct = malloc(len * sizeof(uint8_t));
+    uint8_t **cts = malloc(len * sizeof(uint8_t *));
     for (int i = 0; i < len; i++)
     {
         pt[i] = rand();
@@ -332,8 +333,10 @@ int test_nondeterminism()
     }
     printf("\n\n");
 
-    for (int i = 0; i < iterations; i++)
+    for (int i = 0; i < 3; i++)
     {
+        cts[i] = malloc(len * sizeof(uint8_t));
+        uint8_t *ct = cts[i];
         uint8_t *pt_temp = malloc(len * sizeof(uint8_t));
         for (int i = 0; i < len; i++)
         {
@@ -350,9 +353,33 @@ int test_nondeterminism()
         printf("\n");
         free(pt_temp);
     }
+    bool determin = true;
+    uint8_t *ct0 = cts[0];
+    uint8_t *ct1 = cts[1];
+    uint8_t *ct2 = cts[2];
+    for (int i = 0; i < len; i++)
+    {
+        if (ct0[i] != ct1[i] || ct0[i] != ct2[i] || ct1[i] != ct2[i])
+        {
+            determin = false;
+            break;
+        }
+    }
+    if (determin)
+    {
+        printf("Test failed. The encryptiom appears to be deterministic.\n");
+    }
+    else
+    {
+        printf("Test successful. The encryption is non-deterministic.\n");
+    }
     printf("\n");
+
     free(pt);
-    free(ct);
+    free(ct0);
+    free(ct1);
+    free(ct2);
+    free(cts);
     return 0;
 }
 
